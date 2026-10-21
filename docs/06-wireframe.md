@@ -1,0 +1,1 @@
+[Vsi wireframe zasloni](https://www.figma.com/design/vEMqN9M5Q571TelBLYKpkt/Lo-fi-Wireframe-Kit-FREE-DEMO--Community-?node-id=243-1)
