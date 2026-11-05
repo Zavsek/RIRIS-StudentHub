@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0a2c5c;
+  --color-primary-hover: #071e40;
+  --color-primary-soft: #e7eef6;
+  --color-secondary: #fc6412;
+  --color-secondary-hover: #e0560c;
+  --color-secondary-soft: #fff1e8;
+  --color-background: #f1f5f9;   /* Rahlo hladna svetlo siva */
+  --color-surface: #ffffff;
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+  --color-border: #cbd5e1;
+  --color-danger: #dc2626;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-main);
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

@@ -42,7 +42,7 @@ Aplikacija se bo zaganjala lokalno preko vsebnika na dockerju
 | Frontend | React, Vite |
 | Backend | ASP.NET Core Minimal API (C#) |
 | Podatkovna baza | PostgreSQL |
-| Dostop do baze | Entity Framework Core (ORM) ali raw SQL |
+| Dostop do baze | Dapper |
 | Avtentikacija | JWT, gesla zgoščena |
 | Realtime | SignalR (WebSockets) |
 | Datoteke | Object Storage (Supabase) |
