@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 
 export const ProfilePage = () => {
   const user = useAuthStore(state => state.user)
+  const hasHydrated = useAuthStore(state => state.hasHydrated)
   const { profile, fetchProfile, updateActiveCourses, isLoading } = useUserProfileStore()
   const navigate = useNavigate()
 
@@ -17,12 +18,13 @@ export const ProfilePage = () => {
   const [successMsg, setSuccessMsg] = useState('')
 
   useEffect(() => {
+    if (!hasHydrated) return
     if (!user) {
       navigate('/')
     } else {
       fetchProfile()
     }
-  }, [user, navigate, fetchProfile])
+  }, [hasHydrated, user, navigate, fetchProfile])
 
   useEffect(() => {
     if (profile) {
@@ -45,7 +47,7 @@ export const ProfilePage = () => {
     }
   }
 
-  if (!user) return null
+  if (!hasHydrated || !user) return null
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">

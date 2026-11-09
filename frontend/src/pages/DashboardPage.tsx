@@ -9,19 +9,21 @@ import { ActiveCoursesList } from '../components/dashboard/ActiveCoursesList'
 
 export const DashboardPage = () => {
   const user = useAuthStore(state => state.user)
+  const hasHydrated = useAuthStore(state => state.hasHydrated)
   const logout = useAuthStore(state => state.logout)
   const { profile, fetchProfile, isLoading } = useUserProfileStore()
   const navigate = useNavigate()
 
   useEffect(() => {
+    if (!hasHydrated) return
     if (!user) {
       navigate('/')
     } else {
       fetchProfile()
     }
-  }, [user, navigate, fetchProfile])
+  }, [hasHydrated, user, navigate, fetchProfile])
 
-  if (!user) return null
+  if (!hasHydrated || !user) return null
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">

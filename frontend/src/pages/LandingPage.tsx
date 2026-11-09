@@ -10,15 +10,16 @@ import logoUrl from '../assets/Logo.png'
 export const LandingPage = () => {
   const [isLogin, setIsLogin] = useState(true)
   const user = useAuthStore((state) => state.user)
+  const hasHydrated = useAuthStore((state) => state.hasHydrated)
   const logout = useAuthStore((state) => state.logout)
   const clearError = useAuthStore((state) => state.clearError)
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (user) {
+    if (hasHydrated && user) {
       navigate('/dashboard')
     }
-  }, [user, navigate])
+  }, [hasHydrated, user, navigate])
 
   const showLogin = () => {
     clearError()

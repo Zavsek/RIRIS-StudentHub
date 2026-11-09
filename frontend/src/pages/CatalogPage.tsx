@@ -7,16 +7,18 @@ import logoUrl from '../assets/Logo.png'
 
 export const CatalogPage = () => {
   const user = useAuthStore(state => state.user)
+  const hasHydrated = useAuthStore(state => state.hasHydrated)
   const logout = useAuthStore(state => state.logout)
   const navigate = useNavigate()
 
   useEffect(() => {
+    if (!hasHydrated) return
     if (!user) {
       navigate('/')
     }
-  }, [user, navigate])
+  }, [hasHydrated, user, navigate])
 
-  if (!user) return null
+  if (!hasHydrated || !user) return null
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">

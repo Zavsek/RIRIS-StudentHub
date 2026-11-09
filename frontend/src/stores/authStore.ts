@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { ApiErrorBody, AuthSession, AuthTokens, AuthUser, LoginCredentials, RegisterCredentials } from '../models/auth'
 
 interface AuthState {
@@ -6,10 +7,12 @@ interface AuthState {
   tokens: AuthTokens | null
   error: string | null
   isSubmitting: boolean
+  hasHydrated: boolean
   login: (credentials: LoginCredentials) => Promise<boolean>
   register: (credentials: RegisterCredentials) => Promise<boolean>
   logout: () => Promise<void>
   clearError: () => void
+  setHasHydrated: (value: boolean) => void
 }
 
 const unreachableMessage = 'Strežnik ni dosegljiv.'
@@ -52,11 +55,41 @@ function applySession(
   return true
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+async function refreshStoredSession(refreshToken: string) {
+  try {
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })
+    if (!response.ok) {
+      useAuthStore.setState({ user: null, tokens: null })
+      return
+    }
+
+    const session = await response.json() as AuthSession
+    useAuthStore.setState({ user: session.user, tokens: session.tokens, error: null })
+  } catch {
+    useAuthStore.setState({ user: null, tokens: null })
+  }
+}
+
+function keepSessionFresh(tokens: AuthTokens | null) {
+  if (!tokens) return
+  const expiresAt = new Date(tokens.accessTokenExpiresAt).getTime()
+  if (Number.isNaN(expiresAt) || expiresAt > Date.now()) return
+  void refreshStoredSession(tokens.refreshToken)
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
   user: null,
   tokens: null,
   error: null,
   isSubmitting: false,
+  hasHydrated: false,
+  setHasHydrated: (value) => set({ hasHydrated: value }),
   clearError: () => set({ error: null }),
   login: async (credentials) => {
     set({ isSubmitting: true, error: null })
@@ -79,4 +112,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     set({ user: null, tokens: null, error: null, isSubmitting: false })
   },
-}))
+    }),
+    {
+      name: 'studenthub-auth',
+      partialize: (state) => ({ user: state.user, tokens: state.tokens }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+        keepSessionFresh(state?.tokens ?? null)
+      },
+    },
+  ),
+)
