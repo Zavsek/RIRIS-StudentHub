@@ -22,4 +22,5 @@ export interface Course {
   professor?: string
   ects?: number
   semester?: string
+  programName?: string
 }

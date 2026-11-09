@@ -33,4 +33,13 @@ public sealed class AcademicHandler(IDbConnectionFactory connections)
         
         return courses.Select(c => new CourseDto(c.Id, c.Ime, c.SmerId, c.Letnik, c.Nosilec, c.Ects, c.Semester)).ToList();
     }
+
+    public async Task<List<CourseDto>> SearchCoursesAsync(string queryText, CancellationToken cancellationToken = default)
+    {
+        using var connection = await connections.CreateOpenConnectionAsync(cancellationToken);
+        var query = "SELECT id as Id, ime as Ime, smer_id as SmerId, letnik as Letnik, nosilec as Nosilec, ects as Ects, semester as Semester FROM predmet WHERE ime ILIKE @Query ORDER BY ime LIMIT 50";
+        var courses = await connection.QueryAsync<Predmet>(new CommandDefinition(query, new { Query = $"%{queryText}%" }, cancellationToken: cancellationToken));
+        
+        return courses.Select(c => new CourseDto(c.Id, c.Ime, c.SmerId, c.Letnik, c.Nosilec, c.Ects, c.Semester)).ToList();
+    }
 }

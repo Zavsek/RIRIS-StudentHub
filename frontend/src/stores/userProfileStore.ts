@@ -9,6 +9,7 @@ interface UserProfileState {
 
   fetchProfile: () => Promise<void>
   updateActiveCourses: (courseIds: number[]) => Promise<void>
+  removeActiveCourse: (courseId: number) => Promise<void>
 }
 
 function getAuthHeader(): Record<string, string> {
@@ -48,11 +49,34 @@ export const useUserProfileStore = create<UserProfileState>((set) => ({
       })
       if (!res.ok) throw new Error('Napaka pri posodabljanju predmetov')
       
-      // Update local state if profile exists
       set(state => {
         if (!state.profile) return { isLoading: false }
-        // We might want to refetch the profile here to get full course details
         return { isLoading: false }
+      })
+    } catch (e: any) {
+      set({ error: e.message, isLoading: false })
+      throw e
+    }
+  },
+
+  removeActiveCourse: async (courseId: number) => {
+    set({ isLoading: true, error: null })
+    try {
+      const res = await fetch(`/api/user/courses/${courseId}`, {
+        method: 'DELETE',
+        headers: getAuthHeader()
+      })
+      if (!res.ok) throw new Error('Napaka pri odstranjevanju predmeta')
+      
+      set(state => {
+        if (!state.profile) return { isLoading: false }
+        return { 
+          profile: {
+            ...state.profile,
+            activeCourses: state.profile.activeCourses.filter(c => c.id !== courseId)
+          },
+          isLoading: false 
+        }
       })
     } catch (e: any) {
       set({ error: e.message, isLoading: false })

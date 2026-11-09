@@ -29,6 +29,13 @@ public static class AcademicEndpoints
             return Results.Ok(courses);
         });
 
+        group.MapGet("/courses/search", async (string q, AcademicHandler handler, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(q) || q.Length < 3) return Results.Ok(new List<Models.Dtos.CourseDto>());
+            var courses = await handler.SearchCoursesAsync(q, ct);
+            return Results.Ok(courses);
+        });
+
         return routes;
     }
 }

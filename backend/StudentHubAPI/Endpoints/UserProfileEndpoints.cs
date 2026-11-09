@@ -34,6 +34,15 @@ public static class UserProfileEndpoints
             return Results.NoContent();
         });
 
+        group.MapDelete("/courses/{courseId:int}", async (int courseId, ClaimsPrincipal user, UserProfileHandler handler, CancellationToken ct) =>
+        {
+            if (!AuthUserId.TryRead(user, out var userId))
+                return Results.Unauthorized();
+
+            await handler.RemoveUserCourseAsync(userId, courseId, ct);
+            return Results.NoContent();
+        });
+
         return routes;
     }
 }

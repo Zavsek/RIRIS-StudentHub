@@ -11,6 +11,7 @@ interface AcademicState {
   fetchFaculties: () => Promise<void>
   fetchPrograms: (facultyId: number) => Promise<void>
   fetchCourses: (programId: number) => Promise<void>
+  searchCourses: (query: string) => Promise<Course[]>
 }
 
 export const useAcademicStore = create<AcademicState>((set, get) => ({
@@ -62,6 +63,16 @@ export const useAcademicStore = create<AcademicState>((set, get) => ({
       }))
     } catch (e: any) {
       set({ error: e.message, isLoading: false })
+    }
+  },
+
+  searchCourses: async (query: string) => {
+    try {
+      const res = await fetch(`/api/academic/courses/search?q=${encodeURIComponent(query)}`)
+      if (!res.ok) return []
+      return await res.json() as Course[]
+    } catch (e) {
+      return []
     }
   }
 }))

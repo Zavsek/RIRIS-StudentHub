@@ -34,10 +34,16 @@ export const DashboardPage = () => {
           </div>
           
           <div className="flex items-center gap-4 text-white">
-            <div className="hidden md:block font-medium">{user.name}</div>
+            <Link to="/catalog" className="hidden md:block font-medium text-white/80 hover:text-white transition-colors mr-2">
+              Katalog predmetov
+            </Link>
+            <div className="hidden md:block w-px h-6 bg-white/30 mr-2"></div>
+
+            <div className="hidden lg:block font-medium mr-4">{user.name}</div>
+            
             <Link to="/profile">
               <button className="flex items-center text-sm font-semibold border-2 border-white/30 text-white px-4 py-1.5 rounded-sm hover:bg-white/10 transition-colors uppercase tracking-wide">
-                <Settings size={18} className="mr-2" />
+                <Settings size={18} className="mr-2 hidden sm:block" />
                 Profil
               </button>
             </Link>

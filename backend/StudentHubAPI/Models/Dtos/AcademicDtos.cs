@@ -23,5 +23,6 @@ public sealed record CourseDto(
     int? Year,
     string? Professor,
     int? Ects,
-    string? Semester
+    string? Semester,
+    string? ProgramName = null
 );
