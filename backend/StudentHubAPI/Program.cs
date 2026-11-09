@@ -10,23 +10,27 @@ builder.Services.AddSingleton<PasswordHasher>();
 builder.Services.AddScoped<DatabaseInitializer>();
 builder.Services.AddScoped<AuthRepository>();
 builder.Services.AddScoped<AuthHandler>();
+builder.Services.AddScoped<AcademicHandler>();
+builder.Services.AddScoped<UserProfileHandler>();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
-await InitializeDatabaseAsync(app);
+InitializeDatabase(app);
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapAuthEndpoints();
+app.MapAcademicEndpoints();
+app.MapUserProfileEndpoints();
 app.MapGet("/", () => "StudentHub API");
 
 app.Run();
 
-static async Task InitializeDatabaseAsync(WebApplication app)
+static void InitializeDatabase(WebApplication app)
 {
-    await using var scope = app.Services.CreateAsyncScope();
+    using var scope = app.Services.CreateScope();
     var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
-    await initializer.ApplyAsync();
+    initializer.Apply();
 }

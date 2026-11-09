@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BookOpen, Calendar, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { LoginForm } from '../components/auth/LoginForm'
 import { RegisterForm } from '../components/auth/RegisterForm'
 import { Button } from '../components/ui/Button'
@@ -9,8 +10,16 @@ import logoUrl from '../assets/Logo.png'
 export const LandingPage = () => {
   const [isLogin, setIsLogin] = useState(true)
   const user = useAuthStore((state) => state.user)
+  const hasHydrated = useAuthStore((state) => state.hasHydrated)
   const logout = useAuthStore((state) => state.logout)
   const clearError = useAuthStore((state) => state.clearError)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (hasHydrated && user) {
+      navigate('/dashboard')
+    }
+  }, [hasHydrated, user, navigate])
 
   const showLogin = () => {
     clearError()

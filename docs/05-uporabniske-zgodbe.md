@@ -7,7 +7,7 @@
 Kot študent želim izbrati fakulteto, smer in aktivne predmete, da v aplikaciji vidim le vsebine, ki so relevantne za moj semester.
 
 **Acceptance criteria:**
-- Po registraciji lahko študent izbere eno fakulteto in eno smer s seznama.
+- Po registraciji lahko študent izbere eno fakulteto in smer s seznama.
 - Študent lahko označi več aktivnih predmetov izbrane smeri za tekoči semester.
 - Aktivne predmete lahko kasneje doda ali odstrani.
 - Na domačem pogledu se prikažejo le aktivni predmeti.
