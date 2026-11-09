@@ -1,20 +1,28 @@
-using Dapper;
+using DbUp;
+using Microsoft.Extensions.Configuration;
 
 namespace StudentHubAPI.Data;
 
-public sealed class DatabaseInitializer(IDbConnectionFactory connections, IWebHostEnvironment environment)
+public sealed class DatabaseInitializer(IConfiguration configuration)
 {
-    public async Task ApplyAsync(CancellationToken cancellationToken = default)
+    public void Apply()
     {
-        var path = Path.Combine(environment.ContentRootPath, "Data", "Schema", "auth.sql");
-        if (!File.Exists(path))
-        {
-            throw new FileNotFoundException("Manjka shema za avtentikacijo.", path);
-        }
+        var connectionString = configuration.GetConnectionString("Default")
+            ?? throw new InvalidOperationException("Connection string 'Default' is missing.");
 
-        var sql = await File.ReadAllTextAsync(path, cancellationToken);
-        using var connection = await connections.CreateOpenConnectionAsync(cancellationToken);
-        var command = new CommandDefinition(sql, cancellationToken: cancellationToken);
-        await connection.ExecuteAsync(command);
+        EnsureDatabase.For.PostgresqlDatabase(connectionString);
+
+        var upgrader = DeployChanges.To
+            .PostgresqlDatabase(connectionString)
+            .WithScriptsEmbeddedInAssembly(typeof(DatabaseInitializer).Assembly, s => s.EndsWith(".sql"))
+            .LogToConsole()
+            .Build();
+
+        var result = upgrader.PerformUpgrade();
+
+        if (!result.Successful)
+        {
+            throw new Exception("Migracije baze niso uspele.", result.Error);
+        }
     }
 }

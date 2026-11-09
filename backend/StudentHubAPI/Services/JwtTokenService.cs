@@ -15,6 +15,17 @@ public static class UserRoles
     public const string Admin = "Admin";
 }
 
+public static class AuthUserId
+{
+    public const string ClaimType = JwtRegisteredClaimNames.Sub;
+
+    public static bool TryRead(ClaimsPrincipal principal, out int userId)
+    {
+        var value = principal.FindFirst(ClaimType)?.Value;
+        return int.TryParse(value, out userId);
+    }
+}
+
 public sealed class JwtOptions
 {
     public const string SectionName = "Jwt";
@@ -37,7 +48,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> jwtOptions)
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(_options.ExpiresMinutes);
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(AuthUserId.ClaimType, userId.ToString()),
             new(JwtRegisteredClaimNames.Email, email),
             new("name", name),
             new("role", role)
@@ -53,7 +64,9 @@ public sealed class JwtTokenService(IOptions<JwtOptions> jwtOptions)
             expires: expiresAt.UtcDateTime,
             signingCredentials: credentials);
 
-        return new AccessToken(new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+        var handler = new JwtSecurityTokenHandler();
+        handler.OutboundClaimTypeMap.Clear();
+        return new AccessToken(handler.WriteToken(token), expiresAt);
     }
 }
 

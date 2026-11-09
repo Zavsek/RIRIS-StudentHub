@@ -88,8 +88,7 @@ public sealed class AuthHandler(
 
     public async Task<AuthResult<AuthUser>> GetCurrentUserAsync(ClaimsPrincipal principal, CancellationToken cancellationToken)
     {
-        var idValue = principal.FindFirst("sub")?.Value;
-        if (!int.TryParse(idValue, out var id))
+        if (!AuthUserId.TryRead(principal, out var id))
         {
             return Failure<AuthUser>(StatusCodes.Status401Unauthorized, "unauthorized", "Zahtevana je prijava.");
         }
