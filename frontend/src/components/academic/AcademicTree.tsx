@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronRight, Folder, Search } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAcademicStore } from '../../stores/academicStore'
 import type { Faculty, Program, Course } from '../../models/academic'
 
@@ -13,6 +14,7 @@ type Step = 'faculty' | 'program' | 'year' | 'semester' | 'course' | 'search'
 
 export const AcademicTree = ({ mode, preselectedCourseIds, onSelectionChange }: AcademicTreeProps) => {
   const { faculties, programs, courses, fetchFaculties, fetchPrograms, fetchCourses, searchCourses, isLoading } = useAcademicStore()
+  const navigate = useNavigate()
 
   const [step, setStep] = useState<Step>('faculty')
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null)
@@ -193,9 +195,16 @@ export const AcademicTree = ({ mode, preselectedCourseIds, onSelectionChange }: 
   )
 
   const renderCourseCard = (course: Course) => (
-    <label 
+    <div 
       key={course.id}
-      className={`flex items-start gap-4 p-4 border transition-all ${mode === 'select' ? 'cursor-pointer' : ''} ${
+      onClick={() => {
+        if (mode === 'select') {
+          toggleCourse(course.id)
+        } else {
+          navigate(`/course/${course.id}`)
+        }
+      }}
+      className={`flex items-start gap-4 p-4 border transition-all cursor-pointer ${
         draftSelection.has(course.id) && mode === 'select' ? 'bg-primary-soft border-primary' : 'bg-surface border-border hover:bg-gray-50'
       }`}
     >
@@ -205,6 +214,7 @@ export const AcademicTree = ({ mode, preselectedCourseIds, onSelectionChange }: 
           className="w-4 h-4 text-primary rounded-sm border-gray-300 focus:ring-primary mt-1"
           checked={draftSelection.has(course.id)}
           onChange={() => toggleCourse(course.id)}
+          onClick={(e) => e.stopPropagation()}
         />
       )}
       {mode !== 'select' && (
@@ -234,7 +244,7 @@ export const AcademicTree = ({ mode, preselectedCourseIds, onSelectionChange }: 
           </div>
         )}
       </div>
-    </label>
+    </div>
   )
 
   return (
