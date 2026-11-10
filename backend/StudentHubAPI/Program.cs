@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using StudentHubAPI.Data;
 using StudentHubAPI.Endpoints;
 using StudentHubAPI.Handlers;
+using StudentHubAPI.Hubs;
 using StudentHubAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,8 @@ builder.Services.AddScoped<AcademicHandler>();
 builder.Services.AddScoped<UserProfileHandler>();
 builder.Services.AddScoped<MaterialHandler>();
 builder.Services.AddScoped<ModerationHandler>();
+builder.Services.AddScoped<QaHandler>();
+builder.Services.AddSignalR();
 
 var supabaseOptions = builder.Configuration.GetSection(SupabaseOptions.SectionName).Get<SupabaseOptions>() ?? new SupabaseOptions();
 builder.Services.AddSingleton(supabaseOptions);
@@ -35,6 +38,8 @@ app.MapAcademicEndpoints();
 app.MapUserProfileEndpoints();
 app.MapMaterialEndpoints();
 app.MapModerationEndpoints();
+app.MapQaEndpoints();
+app.MapHub<QaHub>("/hubs/qa");
 app.MapGet("/", () => "StudentHub API");
 
 app.Run();

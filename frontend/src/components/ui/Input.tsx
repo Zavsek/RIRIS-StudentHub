@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label: string;
+  label?: string;
   error?: string;
 }
 
@@ -12,13 +12,15 @@ export const Input: React.FC<InputProps> = ({
   className = '', 
   ...props 
 }) => {
-  const inputId = id || label.toLowerCase().replace(/\s+/g, '-');
+  const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      <label htmlFor={inputId} className="text-sm font-semibold text-text-main tracking-wide">
-        {label}
-      </label>
+      {label && (
+        <label htmlFor={inputId} className="text-sm font-semibold text-text-main tracking-wide">
+          {label}
+        </label>
+      )}
       <input
         id={inputId}
         className={`px-4 py-2 rounded-sm border-2 focus:outline-none focus:border-primary transition-colors ${
