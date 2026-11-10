@@ -1,11 +1,15 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Calendar, MessageSquare, Plus, FileText, ShieldCheck, Filter } from 'lucide-react'
+import { ArrowLeft, BookOpen, Calendar, MessageSquare, Plus, FileText, ShieldCheck, Filter, HelpCircle } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useMaterialStore } from '../stores/materialStore'
 import { useModerationStore } from '../stores/moderationStore'
+import { useQaStore } from '../stores/qaStore'
 import { MaterialCard } from '../components/materials/MaterialCard'
 import { MaterialUploadModal } from '../components/materials/MaterialUploadModal'
+import { QuestionCard } from '../components/qa/QuestionCard'
+import { CreateQuestionModal } from '../components/qa/CreateQuestionModal'
+import { QuestionThreadModal } from '../components/qa/QuestionThreadModal'
 import { Button } from '../components/ui/Button'
 import logoUrl from '../assets/Logo.png'
 
@@ -20,11 +24,16 @@ export const CoursePage = () => {
   const hasHydrated = useAuthStore(state => state.hasHydrated)
   const navigate = useNavigate()
   
-  const { materials, fetchMaterials, isLoading } = useMaterialStore()
+  const { materials, fetchMaterials, isLoading: isMaterialsLoading } = useMaterialStore()
   const { isModerator, checkCourseModeration, assignModerator, removeModerator } = useModerationStore()
+  const { 
+    questions, fetchQuestions, isLoading: isQaLoading, 
+    openQuestionThread, closeQuestionThread, deleteQuestion 
+  } = useQaStore()
   
   const [activeTab, setActiveTab] = useState<TabType>('materials')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const [isCreateQuestionOpen, setIsCreateQuestionOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
 
   useEffect(() => {
@@ -37,8 +46,9 @@ export const CoursePage = () => {
     if (id > 0) {
       fetchMaterials(id)
       checkCourseModeration(id)
+      fetchQuestions(id)
     }
-  }, [hasHydrated, id, user, navigate, fetchMaterials, checkCourseModeration])
+  }, [hasHydrated, id, user, navigate, fetchMaterials, checkCourseModeration, fetchQuestions])
 
   const handleToggleModerator = async () => {
     if (!user) return
@@ -50,6 +60,15 @@ export const CoursePage = () => {
       }
     } catch (e: any) {
       alert(e.message || 'Napaka pri spreminjanju vloge moderatorja.')
+    }
+  }
+
+  const handleDeleteQuestion = async (questionId: number) => {
+    if (!confirm('Ali res želite izbrisati to vprašanje skupaj z vsemi odgovori?')) return
+    try {
+      await deleteQuestion(id, questionId)
+    } catch (e: any) {
+      alert(e.message || 'Napaka pri brisanju vprašanja.')
     }
   }
 
@@ -118,7 +137,19 @@ export const CoursePage = () => {
             }`}
           >
             <BookOpen size={18} />
-            Gradiva
+            Gradiva ({materials.length})
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('qa')}
+            className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'qa' 
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-text-muted hover:text-text-main hover:border-border'
+            }`}
+          >
+            <MessageSquare size={18} />
+            Q&A Forum ({questions.length})
           </button>
           
           <button 
@@ -128,15 +159,6 @@ export const CoursePage = () => {
           >
             <Calendar size={18} />
             Rokovnik (Kmalu)
-          </button>
-
-          <button 
-            disabled
-            className="flex items-center gap-2 px-6 py-3 font-semibold text-sm border-b-2 border-transparent text-gray-300 cursor-not-allowed whitespace-nowrap"
-            title="Kmalu na voljo"
-          >
-            <MessageSquare size={18} />
-            Q&A (Kmalu)
           </button>
         </div>
 
@@ -209,7 +231,7 @@ export const CoursePage = () => {
               </div>
             )}
 
-            {isLoading && materials.length === 0 ? (
+            {isMaterialsLoading && materials.length === 0 ? (
               <div className="py-12 text-center text-text-muted">Nalaganje gradiv...</div>
             ) : materials.length === 0 ? (
               <div className="bg-surface border border-dashed border-border py-12 px-4 text-center rounded-sm">
@@ -233,12 +255,66 @@ export const CoursePage = () => {
             )}
           </div>
         )}
+
+        {/* Tab Content: Q&A */}
+        {activeTab === 'qa' && (
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-text-main">Predmetni Q&A forum</h3>
+                <p className="text-sm text-text-muted mt-1">Zastavi vprašanje glede snovi ali pomagaj sošolcem z odgovori.</p>
+              </div>
+              
+              <Button onClick={() => setIsCreateQuestionOpen(true)} className="flex items-center shrink-0">
+                <Plus size={18} className="mr-2" />
+                Zastavi vprašanje
+              </Button>
+            </div>
+
+            {isQaLoading && questions.length === 0 ? (
+              <div className="py-12 text-center text-text-muted">Nalaganje vprašanj...</div>
+            ) : questions.length === 0 ? (
+              <div className="bg-surface border border-dashed border-border py-12 px-4 text-center rounded-sm">
+                <HelpCircle size={48} className="mx-auto text-gray-300 mb-3" />
+                <h4 className="text-lg font-semibold text-text-main mb-1">Ni še vprašanj</h4>
+                <p className="text-text-muted mb-6 max-w-md mx-auto">Imaš vprašanje glede vaj, predavanj ali naloženih zapiskov? Zastavi ga tukaj!</p>
+                <Button onClick={() => setIsCreateQuestionOpen(true)} variant="outline">
+                  Zastavi prvo vprašanje
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {questions.map(q => (
+                  <QuestionCard
+                    key={q.id}
+                    question={q}
+                    isModerator={isModerator}
+                    onOpenThread={openQuestionThread}
+                    onDeleteQuestion={handleDeleteQuestion}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       <MaterialUploadModal 
         courseId={id} 
         isOpen={isUploadOpen} 
         onClose={() => setIsUploadOpen(false)} 
+      />
+
+      <CreateQuestionModal
+        courseId={id}
+        isOpen={isCreateQuestionOpen}
+        materials={materials}
+        onClose={() => setIsCreateQuestionOpen(false)}
+      />
+
+      <QuestionThreadModal
+        isModerator={isModerator}
+        onClose={closeQuestionThread}
       />
     </div>
   )
