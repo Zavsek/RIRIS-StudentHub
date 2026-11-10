@@ -62,7 +62,15 @@ public static class MaterialEndpoints
             return Results.File(fileBytes, "application/pdf", material.ImeDatoteke);
         });
 
-        group.MapDelete("/{materialId:int}", async (int courseId, int materialId, ClaimsPrincipal user, MaterialHandler dbHandler, SupabaseStorageService storage, CancellationToken ct) =>
+        group.MapDelete("/{materialId:int}", async (
+            int courseId, 
+            int materialId, 
+            ClaimsPrincipal user, 
+            MaterialHandler dbHandler, 
+            ModerationHandler modHandler,
+            SupabaseStorageService storage, 
+            ILoggerFactory loggerFactory,
+            CancellationToken ct) =>
         {
             if (!AuthUserId.TryRead(user, out var userId))
                 return Results.Unauthorized();
@@ -71,8 +79,18 @@ public static class MaterialEndpoints
             if (material is null || !await dbHandler.BelongsToCourseSubjectAsync(material.PredmetId, courseId, ct))
                 return Results.NotFound();
 
-            if (material.UporabnikId != userId) // Trenutno lahko briše samo avtor
+            var isAuthor = material.UporabnikId == userId;
+            var isModerator = await modHandler.IsModeratorForCourseAsync(userId, courseId, ct);
+
+            if (!isAuthor && !isModerator)
                 return Results.Forbid();
+
+            var logger = loggerFactory.CreateLogger("MaterialDeletion");
+            if (!isAuthor && isModerator)
+            {
+                logger.LogInformation("Moderator {ModeratorId} izbrisal gradivo {MaterialId} uporabnika {AuthorId} v predmetu {CourseId}",
+                    userId, materialId, material.UporabnikId, courseId);
+            }
 
             await storage.DeleteFileAsync(material.SupabasePath, ct);
             await dbHandler.DeleteMaterialAsync(materialId, ct);

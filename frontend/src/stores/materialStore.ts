@@ -10,6 +10,7 @@ interface MaterialState {
   fetchMaterials: (courseId: number) => Promise<void>
   uploadMaterial: (courseId: number, title: string, description: string, file: File) => Promise<void>
   deleteMaterial: (courseId: number, materialId: number) => Promise<void>
+  updateMaterialInStore: (material: Material) => void
 }
 
 function getAuthHeader(): Record<string, string> {
@@ -80,5 +81,11 @@ export const useMaterialStore = create<MaterialState>((set) => ({
       set({ error: e.message, isLoading: false })
       throw e
     }
+  },
+
+  updateMaterialInStore: (material: Material) => {
+    set(state => ({
+      materials: state.materials.map(m => m.id === material.id ? material : m)
+    }))
   }
 }))
