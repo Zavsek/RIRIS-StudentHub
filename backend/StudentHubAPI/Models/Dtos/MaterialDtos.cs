@@ -9,5 +9,8 @@ public sealed record MaterialDto(
     string? Description,
     string FileName,
     string Status,
-    DateTimeOffset CreatedAt
-);
+    DateTime CreatedAt
+)
+{
+    public MaterialDto() : this(0, 0, 0, "", "", null, "", "", default) { }
+}

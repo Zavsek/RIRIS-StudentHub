@@ -53,7 +53,8 @@ public static class MaterialEndpoints
         group.MapGet("/{materialId:int}/download", async (int courseId, int materialId, MaterialHandler dbHandler, SupabaseStorageService storage, CancellationToken ct) =>
         {
             var material = await dbHandler.GetMaterialAsync(materialId, ct);
-            if (material is null || material.PredmetId != courseId) return Results.NotFound(new { message = "Gradivo ne obstaja." });
+            if (material is null || !await dbHandler.BelongsToCourseSubjectAsync(material.PredmetId, courseId, ct))
+                return Results.NotFound(new { message = "Gradivo ne obstaja." });
 
             var fileBytes = await storage.DownloadFileAsync(material.SupabasePath, ct);
             if (fileBytes is null) return Results.NotFound(new { message = "Datoteka ne obstaja na strežniku." });
@@ -67,7 +68,8 @@ public static class MaterialEndpoints
                 return Results.Unauthorized();
 
             var material = await dbHandler.GetMaterialAsync(materialId, ct);
-            if (material is null || material.PredmetId != courseId) return Results.NotFound();
+            if (material is null || !await dbHandler.BelongsToCourseSubjectAsync(material.PredmetId, courseId, ct))
+                return Results.NotFound();
 
             if (material.UporabnikId != userId) // Trenutno lahko briše samo avtor
                 return Results.Forbid();

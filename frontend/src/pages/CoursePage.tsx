@@ -15,6 +15,7 @@ export const CoursePage = () => {
   const id = parseInt(courseId || '0', 10)
   
   const user = useAuthStore(state => state.user)
+  const hasHydrated = useAuthStore(state => state.hasHydrated)
   const navigate = useNavigate()
   
   const { materials, fetchMaterials, isLoading } = useMaterialStore()
@@ -25,6 +26,7 @@ export const CoursePage = () => {
   // Za zdaj uporabljamo fiksno ime v kodi.
 
   useEffect(() => {
+    if (!hasHydrated) return
     if (!user) {
       navigate('/')
       return
@@ -33,9 +35,9 @@ export const CoursePage = () => {
     if (id > 0) {
       fetchMaterials(id)
     }
-  }, [id, user, navigate, fetchMaterials])
+  }, [hasHydrated, id, user, navigate, fetchMaterials])
 
-  if (!user) return null
+  if (!hasHydrated || !user) return null
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">

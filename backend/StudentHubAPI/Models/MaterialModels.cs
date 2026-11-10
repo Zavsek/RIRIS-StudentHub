@@ -10,5 +10,5 @@ public sealed class Gradivo
     public string ImeDatoteke { get; init; } = "";
     public string SupabasePath { get; init; } = "";
     public string Status { get; init; } = "";
-    public DateTimeOffset UstvarjenoDne { get; init; }
+    public DateTime UstvarjenoDne { get; init; }
 }

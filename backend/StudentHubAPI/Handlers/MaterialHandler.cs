@@ -12,16 +12,32 @@ public sealed class MaterialHandler(IDbConnectionFactory connections)
         using var connection = await connections.CreateOpenConnectionAsync(cancellationToken);
         
         var query = @"
-            SELECT g.id as Id, g.predmet_id as CourseId, g.uporabnik_id as AuthorId, u.ime as AuthorName, 
+            SELECT g.id as Id, g.predmet_id as CourseId, g.uporabnik_id as AuthorId, COALESCE(u.ime, 'Neznan avtor') as AuthorName, 
                    g.naslov as Title, g.opis as Description, g.ime_datoteke as FileName, g.status as Status, g.ustvarjeno_dne as CreatedAt
             FROM gradivo g
-            JOIN uporabnik u ON g.uporabnik_id = u.id
-            WHERE g.predmet_id = @CourseId
+            LEFT JOIN uporabnik u ON g.uporabnik_id = u.id
+            JOIN predmet current_p ON g.predmet_id = current_p.id
+            JOIN predmet selected_p ON LOWER(current_p.ime) = LOWER(selected_p.ime)
+            WHERE selected_p.id = @CourseId
             ORDER BY g.ustvarjeno_dne DESC";
             
         var materials = await connection.QueryAsync<MaterialDto>(new CommandDefinition(query, new { CourseId = courseId }, cancellationToken: cancellationToken));
         
         return materials.ToList();
+    }
+
+    public async Task<bool> BelongsToCourseSubjectAsync(int materialPredmetId, int targetCourseId, CancellationToken cancellationToken = default)
+    {
+        if (materialPredmetId == targetCourseId) return true;
+
+        using var connection = await connections.CreateOpenConnectionAsync(cancellationToken);
+        var query = @"
+            SELECT 1 FROM predmet p1 
+            JOIN predmet p2 ON LOWER(p1.ime) = LOWER(p2.ime) 
+            WHERE p1.id = @P1 AND p2.id = @P2";
+
+        var result = await connection.ExecuteScalarAsync<int?>(new CommandDefinition(query, new { P1 = materialPredmetId, P2 = targetCourseId }, cancellationToken: cancellationToken));
+        return result.HasValue;
     }
 
     public async Task<MaterialDto> AddMaterialAsync(int courseId, int userId, string title, string? description, string fileName, string supabasePath, CancellationToken cancellationToken = default)
