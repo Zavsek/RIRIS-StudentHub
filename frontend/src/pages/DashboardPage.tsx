@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BookOpen, Search, Settings } from 'lucide-react'
+import { BookOpen, Search, Settings, Calendar } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { useUserProfileStore } from '../stores/userProfileStore'
@@ -43,6 +43,9 @@ export const DashboardPage = () => {
             <Link to="/catalog" className="hidden md:block font-medium text-white/80 hover:text-white transition-colors mr-2">
               Katalog predmetov
             </Link>
+            <Link to="/calendar" className="hidden md:block font-medium text-white/80 hover:text-white transition-colors mr-2">
+              Rokovnik
+            </Link>
             <div className="hidden md:block w-px h-6 bg-white/30 mr-2"></div>
 
             <div className="hidden lg:block font-medium mr-4">{user.name}</div>
@@ -62,9 +65,18 @@ export const DashboardPage = () => {
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
-        <div className="flex items-center gap-3 mb-6">
-          <BookOpen className="text-primary" size={28} />
-          <h2 className="text-2xl font-bold text-text-main">Moji aktivni predmeti</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <BookOpen className="text-primary" size={28} />
+            <h2 className="text-2xl font-bold text-text-main">Moji aktivni predmeti</h2>
+          </div>
+
+          <Link to="/calendar">
+            <Button variant="outline" className="flex items-center gap-2 text-sm">
+              <Calendar size={16} />
+              Odpri skupni rokovnik
+            </Button>
+          </Link>
         </div>
         
         {isLoading && !profile ? (

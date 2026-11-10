@@ -1,15 +1,20 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Calendar, MessageSquare, Plus, FileText, ShieldCheck, Filter, HelpCircle } from 'lucide-react'
+import { ArrowLeft, BookOpen, Calendar, MessageSquare, Plus, FileText, ShieldCheck, Filter, HelpCircle, List } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useMaterialStore } from '../stores/materialStore'
 import { useModerationStore } from '../stores/moderationStore'
 import { useQaStore } from '../stores/qaStore'
+import { useCalendarStore } from '../stores/calendarStore'
+import type { Obligation } from '../models/calendar'
 import { MaterialCard } from '../components/materials/MaterialCard'
 import { MaterialUploadModal } from '../components/materials/MaterialUploadModal'
 import { QuestionCard } from '../components/qa/QuestionCard'
 import { CreateQuestionModal } from '../components/qa/CreateQuestionModal'
 import { QuestionThreadModal } from '../components/qa/QuestionThreadModal'
+import { ObligationCard } from '../components/calendar/ObligationCard'
+import { ObligationModal } from '../components/calendar/ObligationModal'
+import { CalendarGridView } from '../components/calendar/CalendarGridView'
 import { Button } from '../components/ui/Button'
 import logoUrl from '../assets/Logo.png'
 
@@ -30,10 +35,18 @@ export const CoursePage = () => {
     questions, fetchQuestions, isLoading: isQaLoading, 
     openQuestionThread, closeQuestionThread, deleteQuestion 
   } = useQaStore()
+  const {
+    courseObligations, fetchCourseObligations, isLoading: isCalendarLoading,
+    deleteObligation
+  } = useCalendarStore()
   
   const [activeTab, setActiveTab] = useState<TabType>('materials')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [isCreateQuestionOpen, setIsCreateQuestionOpen] = useState(false)
+  const [isObligationModalOpen, setIsObligationModalOpen] = useState(false)
+  const [editingObligation, setEditingObligation] = useState<Obligation | null>(null)
+  const [initialModalDate, setInitialModalDate] = useState<Date | null>(null)
+  const [calendarViewMode, setCalendarViewMode] = useState<'grid' | 'list'>('grid')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
 
   useEffect(() => {
@@ -47,8 +60,9 @@ export const CoursePage = () => {
       fetchMaterials(id)
       checkCourseModeration(id)
       fetchQuestions(id)
+      fetchCourseObligations(id)
     }
-  }, [hasHydrated, id, user, navigate, fetchMaterials, checkCourseModeration, fetchQuestions])
+  }, [hasHydrated, id, user, navigate, fetchMaterials, checkCourseModeration, fetchQuestions, fetchCourseObligations])
 
   const handleToggleModerator = async () => {
     if (!user) return
@@ -69,6 +83,20 @@ export const CoursePage = () => {
       await deleteQuestion(id, questionId)
     } catch (e: any) {
       alert(e.message || 'Napaka pri brisanju vprašanja.')
+    }
+  }
+
+  const handleEditObligation = (ob: Obligation) => {
+    setEditingObligation(ob)
+    setIsObligationModalOpen(true)
+  }
+
+  const handleDeleteObligation = async (obId: number) => {
+    if (!confirm('Ali res želite izbrisati to obveznost iz rokovnika?')) return
+    try {
+      await deleteObligation(id, obId)
+    } catch (e: any) {
+      alert(e.message || 'Napaka pri brisanju obveznosti.')
     }
   }
 
@@ -141,6 +169,18 @@ export const CoursePage = () => {
           </button>
 
           <button 
+            onClick={() => setActiveTab('calendar')}
+            className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'calendar' 
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-text-muted hover:text-text-main hover:border-border'
+            }`}
+          >
+            <Calendar size={18} />
+            Rokovnik ({courseObligations.length})
+          </button>
+
+          <button 
             onClick={() => setActiveTab('qa')}
             className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'qa' 
@@ -150,15 +190,6 @@ export const CoursePage = () => {
           >
             <MessageSquare size={18} />
             Q&A Forum ({questions.length})
-          </button>
-          
-          <button 
-            disabled
-            className="flex items-center gap-2 px-6 py-3 font-semibold text-sm border-b-2 border-transparent text-gray-300 cursor-not-allowed whitespace-nowrap"
-            title="Kmalu na voljo"
-          >
-            <Calendar size={18} />
-            Rokovnik (Kmalu)
           </button>
         </div>
 
@@ -177,7 +208,6 @@ export const CoursePage = () => {
               </Button>
             </div>
 
-            {/* Filter po statusih */}
             {materials.length > 0 && (
               <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 text-xs">
                 <span className="flex items-center gap-1 text-text-muted font-medium mr-1">
@@ -256,6 +286,92 @@ export const CoursePage = () => {
           </div>
         )}
 
+        {/* Tab Content: Calendar (Rokovnik) */}
+        {activeTab === 'calendar' && (
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-text-main">Predmetni rokovnik obveznosti</h3>
+                <p className="text-sm text-text-muted mt-1">Pomembni roki za kolokvije, izpite in oddaje pri tem predmetu.</p>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                {/* Preklop med Koledarjem in Seznamom */}
+                <div className="flex items-center bg-gray-100 p-1 border border-border rounded-sm">
+                  <button
+                    onClick={() => setCalendarViewMode('grid')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-sm transition-colors ${
+                      calendarViewMode === 'grid'
+                        ? 'bg-white text-primary shadow-xs'
+                        : 'text-text-muted hover:text-text-main'
+                    }`}
+                  >
+                    <Calendar size={14} />
+                    Koledar
+                  </button>
+                  <button
+                    onClick={() => setCalendarViewMode('list')}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-sm transition-colors ${
+                      calendarViewMode === 'list'
+                        ? 'bg-white text-primary shadow-xs'
+                        : 'text-text-muted hover:text-text-main'
+                    }`}
+                  >
+                    <List size={14} />
+                    Seznam
+                  </button>
+                </div>
+
+                {isModerator && (
+                  <Button onClick={() => { setInitialModalDate(null); setEditingObligation(null); setIsObligationModalOpen(true); }} className="flex items-center shrink-0">
+                    <Plus size={18} className="mr-2" />
+                    Dodaj obveznost
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {isCalendarLoading && courseObligations.length === 0 ? (
+              <div className="py-12 text-center text-text-muted">Nalaganje obveznosti...</div>
+            ) : calendarViewMode === 'grid' ? (
+              <CalendarGridView
+                obligations={courseObligations}
+                isModerator={isModerator}
+                onEdit={handleEditObligation}
+                onDelete={handleDeleteObligation}
+                onAdd={(d) => {
+                  setInitialModalDate(d || null);
+                  setEditingObligation(null);
+                  setIsObligationModalOpen(true);
+                }}
+              />
+            ) : courseObligations.length === 0 ? (
+              <div className="bg-surface border border-dashed border-border py-12 px-4 text-center rounded-sm">
+                <Calendar size={48} className="mx-auto text-gray-300 mb-3" />
+                <h4 className="text-lg font-semibold text-text-main mb-1">Ni še vnesenih rokov</h4>
+                <p className="text-text-muted mb-6 max-w-md mx-auto">Za ta predmet moderator še ni vnesel nobenih kolokvijev, izpitov ali oddaj.</p>
+                {isModerator && (
+                  <Button onClick={() => { setInitialModalDate(null); setEditingObligation(null); setIsObligationModalOpen(true); }} variant="outline">
+                    Dodaj prvo obveznost
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {courseObligations.map(ob => (
+                  <ObligationCard
+                    key={ob.id}
+                    obligation={ob}
+                    isModerator={isModerator}
+                    onEdit={handleEditObligation}
+                    onDelete={handleDeleteObligation}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tab Content: Q&A */}
         {activeTab === 'qa' && (
           <div>
@@ -315,6 +431,18 @@ export const CoursePage = () => {
       <QuestionThreadModal
         isModerator={isModerator}
         onClose={closeQuestionThread}
+      />
+
+      <ObligationModal
+        courseId={id}
+        isOpen={isObligationModalOpen}
+        obligation={editingObligation}
+        initialDate={initialModalDate}
+        onClose={() => {
+          setIsObligationModalOpen(false)
+          setEditingObligation(null)
+          setInitialModalDate(null)
+        }}
       />
     </div>
   )
