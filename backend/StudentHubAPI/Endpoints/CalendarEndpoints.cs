@@ -14,6 +14,13 @@ public static class CalendarEndpoints
 
     public static IEndpointRouteBuilder MapCalendarEndpoints(this IEndpointRouteBuilder routes)
     {
+        routes.MapGet("/api/user/obligations", async (ClaimsPrincipal user, CalendarHandler handler, CancellationToken ct) =>
+        {
+            if (!AuthUserId.TryRead(user, out var userId)) return Results.Unauthorized();
+            var obligations = await handler.GetAllObligationsForUserAsync(userId, ct);
+            return Results.Ok(obligations);
+        }).RequireAuthorization();
+
         var group = routes.MapGroup("/api/courses/{courseId:int}/obligations").RequireAuthorization();
 
         group.MapGet("/", async (int courseId, CalendarHandler handler, CancellationToken ct) =>

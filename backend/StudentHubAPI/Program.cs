@@ -18,6 +18,7 @@ builder.Services.AddScoped<UserProfileHandler>();
 builder.Services.AddScoped<MaterialHandler>();
 builder.Services.AddScoped<ModerationHandler>();
 builder.Services.AddScoped<QaHandler>();
+builder.Services.AddScoped<CalendarHandler>();
 builder.Services.AddSignalR();
 
 var supabaseOptions = builder.Configuration.GetSection(SupabaseOptions.SectionName).Get<SupabaseOptions>() ?? new SupabaseOptions();
@@ -39,6 +40,7 @@ app.MapUserProfileEndpoints();
 app.MapMaterialEndpoints();
 app.MapModerationEndpoints();
 app.MapQaEndpoints();
+app.MapCalendarEndpoints();
 app.MapHub<QaHub>("/hubs/qa");
 app.MapGet("/", () => "StudentHub API");
 
