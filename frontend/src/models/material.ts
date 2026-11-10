@@ -8,4 +8,6 @@ export interface Material {
   fileName: string
   status: string
   createdAt: string
+  reviewedById?: number
+  reviewedByName?: string
 }

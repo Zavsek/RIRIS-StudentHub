@@ -3,15 +3,18 @@ import { BookOpen, Search, Settings } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { useUserProfileStore } from '../stores/userProfileStore'
+import { useModerationStore } from '../stores/moderationStore'
 import { Button } from '../components/ui/Button'
 import logoUrl from '../assets/Logo.png'
 import { ActiveCoursesList } from '../components/dashboard/ActiveCoursesList'
+import { ModeratedCoursesList } from '../components/dashboard/ModeratedCoursesList'
 
 export const DashboardPage = () => {
   const user = useAuthStore(state => state.user)
   const hasHydrated = useAuthStore(state => state.hasHydrated)
   const logout = useAuthStore(state => state.logout)
   const { profile, fetchProfile, isLoading } = useUserProfileStore()
+  const { moderatedCourses, fetchModeratedCourses } = useModerationStore()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -20,8 +23,9 @@ export const DashboardPage = () => {
       navigate('/')
     } else {
       fetchProfile()
+      fetchModeratedCourses()
     }
-  }, [hasHydrated, user, navigate, fetchProfile])
+  }, [hasHydrated, user, navigate, fetchProfile, fetchModeratedCourses])
 
   if (!hasHydrated || !user) return null
 
@@ -78,6 +82,8 @@ export const DashboardPage = () => {
         ) : (
           <ActiveCoursesList courses={profile?.activeCourses || []} />
         )}
+
+        <ModeratedCoursesList courses={moderatedCourses} />
       </main>
     </div>
   )

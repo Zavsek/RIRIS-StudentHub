@@ -1,21 +1,28 @@
 import { useState } from 'react'
-import { FileDown, Trash2, FileText, Clock } from 'lucide-react'
+import { FileDown, Trash2, FileText, Clock, CheckCircle2, XCircle, RotateCcw } from 'lucide-react'
 import { Button } from '../ui/Button'
 import type { Material } from '../../models/material'
+import type { MaterialStatus } from '../../models/moderation'
 import { useAuthStore } from '../../stores/authStore'
 import { useMaterialStore } from '../../stores/materialStore'
+import { useModerationStore } from '../../stores/moderationStore'
 
 interface MaterialCardProps {
   material: Material
+  isModerator?: boolean
 }
 
-export const MaterialCard = ({ material }: MaterialCardProps) => {
+export const MaterialCard = ({ material, isModerator = false }: MaterialCardProps) => {
   const user = useAuthStore(state => state.user)
   const token = useAuthStore(state => state.tokens?.accessToken)
   const deleteMaterial = useMaterialStore(state => state.deleteMaterial)
+  const setMaterialStatus = useModerationStore(state => state.setMaterialStatus)
+  
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
   const isAuthor = user?.id === material.authorId
+  const canDelete = isAuthor || isModerator
 
   const handleDownload = async () => {
     try {
@@ -28,7 +35,6 @@ export const MaterialCard = ({ material }: MaterialCardProps) => {
         return
       }
 
-      // Ustvari Blob in navidezni gumb za prenos
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -38,20 +44,35 @@ export const MaterialCard = ({ material }: MaterialCardProps) => {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-    } catch (e) {
+    } catch {
       alert('Napaka pri prenosu datoteke.')
     }
   }
 
   const handleDelete = async () => {
-    if (!confirm('Ali res želite izbrisati to gradivo? Dejanja ni mogoče razveljaviti.')) return
+    const confirmMsg = isAuthor
+      ? 'Ali res želite izbrisati to gradivo? Dejanja ni mogoče razveljaviti.'
+      : `Ali kot moderator želite izbrisati gradivo "${material.title}" avtorja ${material.authorName}?`
+    
+    if (!confirm(confirmMsg)) return
     
     setIsDeleting(true)
     try {
       await deleteMaterial(material.courseId, material.id)
-    } catch (e) {
+    } catch {
       alert('Napaka pri brisanju.')
       setIsDeleting(false)
+    }
+  }
+
+  const handleStatusChange = async (newStatus: MaterialStatus) => {
+    setIsUpdatingStatus(true)
+    try {
+      await setMaterialStatus(material.courseId, material.id, newStatus)
+    } catch (e: any) {
+      alert(e.message || 'Napaka pri posodobitvi statusa.')
+    } finally {
+      setIsUpdatingStatus(false)
     }
   }
 
@@ -85,9 +106,29 @@ export const MaterialCard = ({ material }: MaterialCardProps) => {
                 <Clock size={12} className="mr-1 opacity-70" />
                 {date}
               </span>
+
+              {/* Status značke */}
+              {material.status === 'Priporoceno' && (
+                <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-sm font-semibold flex items-center gap-1 border border-green-200">
+                  <CheckCircle2 size={13} className="text-green-600" />
+                  Priporočeno
+                </span>
+              )}
+              {material.status === 'Nepriporoceno' && (
+                <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-sm font-semibold flex items-center gap-1 border border-red-200">
+                  <XCircle size={13} className="text-red-600" />
+                  Nepriporočeno
+                </span>
+              )}
               {material.status === 'Cakanje' && (
-                <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-sm font-medium">
+                <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-sm font-medium border border-yellow-200">
                   Čakanje na pregled
+                </span>
+              )}
+
+              {material.reviewedByName && material.status !== 'Cakanje' && (
+                <span className="text-xs text-text-muted italic">
+                  (Pregledal: {material.reviewedByName})
                 </span>
               )}
             </div>
@@ -100,18 +141,66 @@ export const MaterialCard = ({ material }: MaterialCardProps) => {
             Prenesi
           </Button>
           
-          {isAuthor && (
+          {canDelete && (
             <button 
               onClick={handleDelete}
               disabled={isDeleting}
               className="text-xs text-red-500 hover:text-red-700 hover:underline flex items-center mt-1"
+              title={isAuthor ? 'Izbriši lastno gradivo' : 'Izbriši gradivo kot moderator'}
             >
               <Trash2 size={12} className="mr-1" />
-              Izbriši
+              {isAuthor ? 'Izbriši' : 'Izbriši (moderator)'}
             </button>
           )}
         </div>
       </div>
+
+      {/* Moderacijska orodna vrstica - vsem moderatorjem dodeljenega predmeta */}
+      {isModerator && (
+        <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2 bg-gray-50/70 p-2.5">
+          <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+            Moderacija gradiva:
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {material.status !== 'Priporoceno' && (
+              <button
+                onClick={() => handleStatusChange('Priporoceno')}
+                disabled={isUpdatingStatus}
+                className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded-sm font-medium transition-colors"
+                title="Označi kot priporočeno za študij"
+              >
+                <CheckCircle2 size={13} />
+                Priporočeno
+              </button>
+            )}
+
+            {material.status !== 'Nepriporoceno' && (
+              <button
+                onClick={() => handleStatusChange('Nepriporoceno')}
+                disabled={isUpdatingStatus}
+                className="flex items-center gap-1 text-xs bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded-sm font-medium transition-colors"
+                title="Označi kot nepriporočeno gradivo"
+              >
+                <XCircle size={13} />
+                Nepriporočeno
+              </button>
+            )}
+
+            {material.status !== 'Cakanje' && (
+              <button
+                onClick={() => handleStatusChange('Cakanje')}
+                disabled={isUpdatingStatus}
+                className="flex items-center gap-1 text-xs bg-white border border-border hover:bg-gray-100 text-text-muted px-2 py-1 rounded-sm transition-colors"
+                title="Ponastavi status nazaj v čakanje"
+              >
+                <RotateCcw size={12} />
+                Ponastavi
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
