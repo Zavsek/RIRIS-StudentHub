@@ -10,18 +10,38 @@ public sealed class CalendarHandler(IDbConnectionFactory connections)
     {
         using var connection = await connections.CreateOpenConnectionAsync(ct);
         var query = @"
-            SELECT o.id as Id, o.predmet_id as CourseId, o.uporabnik_id as AuthorId,
+            SELECT o.id as Id, o.predmet_id as CourseId, p.ime as CourseName, o.uporabnik_id as AuthorId,
                    COALESCE(u.ime, 'Neznan avtor') as AuthorName,
                    o.naslov as Title, o.tip as Type, o.datum as Date, o.opis as Description,
                    o.ustvarjeno_dne as CreatedAt
             FROM obveznost o
+            JOIN predmet p ON o.predmet_id = p.id
             LEFT JOIN uporabnik u ON o.uporabnik_id = u.id
-            JOIN predmet current_p ON o.predmet_id = current_p.id
-            JOIN predmet selected_p ON LOWER(current_p.ime) = LOWER(selected_p.ime)
+            JOIN predmet selected_p ON LOWER(p.ime) = LOWER(selected_p.ime)
             WHERE selected_p.id = @CourseId
             ORDER BY o.datum ASC";
 
         var obligations = await connection.QueryAsync<ObligationDto>(new CommandDefinition(query, new { CourseId = courseId }, cancellationToken: ct));
+        return obligations.ToList();
+    }
+
+    public async Task<List<ObligationDto>> GetAllObligationsForUserAsync(int userId, CancellationToken ct = default)
+    {
+        using var connection = await connections.CreateOpenConnectionAsync(ct);
+        var query = @"
+            SELECT DISTINCT o.id as Id, o.predmet_id as CourseId, p.ime as CourseName,
+                   o.uporabnik_id as AuthorId, COALESCE(u.ime, 'Neznan avtor') as AuthorName,
+                   o.naslov as Title, o.tip as Type, o.datum as Date, o.opis as Description,
+                   o.ustvarjeno_dne as CreatedAt
+            FROM obveznost o
+            JOIN predmet p ON o.predmet_id = p.id
+            LEFT JOIN uporabnik u ON o.uporabnik_id = u.id
+            JOIN uporabnik_predmet up ON up.uporabnik_id = @UserId
+            JOIN predmet enrolled_p ON up.predmet_id = enrolled_p.id
+            WHERE LOWER(p.ime) = LOWER(enrolled_p.ime)
+            ORDER BY o.datum ASC";
+
+        var obligations = await connection.QueryAsync<ObligationDto>(new CommandDefinition(query, new { UserId = userId }, cancellationToken: ct));
         return obligations.ToList();
     }
 
@@ -37,10 +57,13 @@ public sealed class CalendarHandler(IDbConnectionFactory connections)
             new { CourseId = courseId, UserId = userId, Title = req.Title, Type = req.Type, Date = req.Date, Description = req.Description }, 
             cancellationToken: ct));
 
-        var userQuery = "SELECT ime FROM uporabnik WHERE id = @UserId";
-        var userName = await connection.QuerySingleAsync<string>(new CommandDefinition(userQuery, new { UserId = userId }, cancellationToken: ct));
+        var metaQuery = @"
+            SELECT u.ime as UserName, p.ime as CourseName 
+            FROM uporabnik u, predmet p 
+            WHERE u.id = @UserId AND p.id = @CourseId";
+        var meta = await connection.QuerySingleAsync<dynamic>(new CommandDefinition(metaQuery, new { UserId = userId, CourseId = courseId }, cancellationToken: ct));
 
-        return new ObligationDto((int)result.id, courseId, userId, userName, req.Title, req.Type, req.Date, req.Description, (DateTime)result.ustvarjeno_dne);
+        return new ObligationDto((int)result.id, courseId, (string)meta.coursename, userId, (string)meta.username, req.Title, req.Type, req.Date, req.Description, (DateTime)result.ustvarjeno_dne);
     }
 
     public async Task<ObligationDto?> UpdateObligationAsync(int obligationId, UpdateObligationRequest req, CancellationToken ct = default)
@@ -58,11 +81,12 @@ public sealed class CalendarHandler(IDbConnectionFactory connections)
         if (affected == 0) return null;
 
         var selectQuery = @"
-            SELECT o.id as Id, o.predmet_id as CourseId, o.uporabnik_id as AuthorId,
+            SELECT o.id as Id, o.predmet_id as CourseId, p.ime as CourseName, o.uporabnik_id as AuthorId,
                    COALESCE(u.ime, 'Neznan avtor') as AuthorName,
                    o.naslov as Title, o.tip as Type, o.datum as Date, o.opis as Description,
                    o.ustvarjeno_dne as CreatedAt
             FROM obveznost o
+            JOIN predmet p ON o.predmet_id = p.id
             LEFT JOIN uporabnik u ON o.uporabnik_id = u.id
             WHERE o.id = @ObligationId";
 

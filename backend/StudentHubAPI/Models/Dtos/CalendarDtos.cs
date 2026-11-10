@@ -3,6 +3,7 @@ namespace StudentHubAPI.Models.Dtos;
 public sealed record ObligationDto(
     int Id,
     int CourseId,
+    string? CourseName,
     int AuthorId,
     string AuthorName,
     string Title,
@@ -12,7 +13,7 @@ public sealed record ObligationDto(
     DateTime CreatedAt
 )
 {
-    public ObligationDto() : this(0, 0, 0, "", "", "", default, null, default) { }
+    public ObligationDto() : this(0, 0, null, 0, "", "", "", default, null, default) { }
 }
 
 public sealed record CreateObligationRequest(
