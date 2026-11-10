@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 import type { Course } from '../../models/academic'
 import { useUserProfileStore } from '../../stores/userProfileStore'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 interface ActiveCoursesListProps {
   courses: Course[]
@@ -10,6 +11,7 @@ interface ActiveCoursesListProps {
 export const ActiveCoursesList = ({ courses }: ActiveCoursesListProps) => {
   const removeActiveCourse = useUserProfileStore(state => state.removeActiveCourse)
   const [removingId, setRemovingId] = useState<number | null>(null)
+  const navigate = useNavigate()
 
   const handleRemove = async (e: React.MouseEvent, courseId: number) => {
     e.stopPropagation()
@@ -22,6 +24,10 @@ export const ActiveCoursesList = ({ courses }: ActiveCoursesListProps) => {
         setRemovingId(null)
       }
     }
+  }
+
+  const handleCourseClick = (courseId: number) => {
+    navigate(`/course/${courseId}`)
   }
 
   // Grupiraj predmete po semestrih
@@ -45,6 +51,7 @@ export const ActiveCoursesList = ({ courses }: ActiveCoursesListProps) => {
             {semsCourses.map(course => (
               <div 
                 key={course.id} 
+                onClick={() => handleCourseClick(course.id)}
                 className={`bg-surface border border-border p-5 hover:border-primary/50 transition-colors cursor-pointer group relative ${removingId === course.id ? 'opacity-50 pointer-events-none' : ''}`}
               >
                 <button 

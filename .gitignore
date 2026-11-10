@@ -13,6 +13,8 @@
 *.key
 secrets/
 credentials/
+**/appsettings.json
+**/appsettings.*.json
 
 # Logs
 logs/
