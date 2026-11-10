@@ -15,6 +15,7 @@ builder.Services.AddScoped<AuthHandler>();
 builder.Services.AddScoped<AcademicHandler>();
 builder.Services.AddScoped<UserProfileHandler>();
 builder.Services.AddScoped<MaterialHandler>();
+builder.Services.AddScoped<ModerationHandler>();
 
 var supabaseOptions = builder.Configuration.GetSection(SupabaseOptions.SectionName).Get<SupabaseOptions>() ?? new SupabaseOptions();
 builder.Services.AddSingleton(supabaseOptions);
@@ -33,6 +34,7 @@ app.MapAuthEndpoints();
 app.MapAcademicEndpoints();
 app.MapUserProfileEndpoints();
 app.MapMaterialEndpoints();
+app.MapModerationEndpoints();
 app.MapGet("/", () => "StudentHub API");
 
 app.Run();

@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Calendar, MessageSquare, Plus, FileText } from 'lucide-react'
+import { ArrowLeft, BookOpen, Calendar, MessageSquare, Plus, FileText, ShieldCheck, Filter } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useMaterialStore } from '../stores/materialStore'
+import { useModerationStore } from '../stores/moderationStore'
 import { MaterialCard } from '../components/materials/MaterialCard'
 import { MaterialUploadModal } from '../components/materials/MaterialUploadModal'
 import { Button } from '../components/ui/Button'
 import logoUrl from '../assets/Logo.png'
 
 type TabType = 'materials' | 'calendar' | 'qa'
+type StatusFilter = 'ALL' | 'Cakanje' | 'Priporoceno' | 'Nepriporoceno'
 
 export const CoursePage = () => {
   const { courseId } = useParams<{ courseId: string }>()
@@ -19,11 +21,11 @@ export const CoursePage = () => {
   const navigate = useNavigate()
   
   const { materials, fetchMaterials, isLoading } = useMaterialStore()
+  const { isModerator, checkCourseModeration, assignModerator, removeModerator } = useModerationStore()
+  
   const [activeTab, setActiveTab] = useState<TabType>('materials')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
-
-  // TODO: Kasneje bomo tukaj fetchali tudi podatke o samem predmetu (naslov, opis)
-  // Za zdaj uporabljamo fiksno ime v kodi.
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
 
   useEffect(() => {
     if (!hasHydrated) return
@@ -34,8 +36,36 @@ export const CoursePage = () => {
     
     if (id > 0) {
       fetchMaterials(id)
+      checkCourseModeration(id)
     }
-  }, [hasHydrated, id, user, navigate, fetchMaterials])
+  }, [hasHydrated, id, user, navigate, fetchMaterials, checkCourseModeration])
+
+  const handleToggleModerator = async () => {
+    if (!user) return
+    try {
+      if (isModerator) {
+        await removeModerator(id, user.id)
+      } else {
+        await assignModerator(id, user.id)
+      }
+    } catch (e: any) {
+      alert(e.message || 'Napaka pri spreminjanju vloge moderatorja.')
+    }
+  }
+
+  const filteredMaterials = useMemo(() => {
+    if (statusFilter === 'ALL') return materials
+    return materials.filter(m => m.status === statusFilter)
+  }, [materials, statusFilter])
+
+  const counts = useMemo(() => {
+    return {
+      all: materials.length,
+      pending: materials.filter(m => m.status === 'Cakanje').length,
+      recommended: materials.filter(m => m.status === 'Priporoceno').length,
+      notRecommended: materials.filter(m => m.status === 'Nepriporoceno').length
+    }
+  }, [materials])
 
   if (!hasHydrated || !user) return null
 
@@ -49,10 +79,27 @@ export const CoursePage = () => {
               <ArrowLeft size={24} />
             </Link>
             <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain" />
-            <div className="hidden sm:block">
-              <h1 className="text-sm font-medium text-white/70 tracking-tight leading-tight">Predmet</h1>
+            <div>
+              <h1 className="text-sm font-medium text-white/70 tracking-tight leading-tight">Predmet #{id}</h1>
               <h2 className="text-lg font-bold text-white tracking-tight leading-tight">Pregled predmeta</h2>
             </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {isModerator ? (
+              <span className="bg-white/10 border border-white/30 text-white text-xs px-2.5 py-1 rounded-sm flex items-center gap-1.5 font-medium">
+                <ShieldCheck size={14} className="text-secondary" />
+                Moderator predmeta
+              </span>
+            ) : null}
+
+            <button
+              onClick={handleToggleModerator}
+              className="text-xs text-white/80 hover:text-white underline bg-white/5 hover:bg-white/10 px-2 py-1 rounded-sm transition-colors"
+              title="Testna funkcija za dodelitev/odvzem moderatorskih pravic za ta predmet"
+            >
+              {isModerator ? 'Prekliči vlogo moderatorja' : 'Postani moderator (test)'}
+            </button>
           </div>
         </div>
       </header>
@@ -108,6 +155,60 @@ export const CoursePage = () => {
               </Button>
             </div>
 
+            {/* Filter po statusih */}
+            {materials.length > 0 && (
+              <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 text-xs">
+                <span className="flex items-center gap-1 text-text-muted font-medium mr-1">
+                  <Filter size={13} />
+                  Filter:
+                </span>
+                
+                <button
+                  onClick={() => setStatusFilter('ALL')}
+                  className={`px-3 py-1 rounded-sm font-medium transition-colors border ${
+                    statusFilter === 'ALL'
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-surface text-text-muted border-border hover:bg-gray-100'
+                  }`}
+                >
+                  Vsa ({counts.all})
+                </button>
+
+                <button
+                  onClick={() => setStatusFilter('Priporoceno')}
+                  className={`px-3 py-1 rounded-sm font-medium transition-colors border ${
+                    statusFilter === 'Priporoceno'
+                      ? 'bg-green-700 text-white border-green-700'
+                      : 'bg-surface text-green-700 border-border hover:bg-green-50'
+                  }`}
+                >
+                  Priporočeno ({counts.recommended})
+                </button>
+
+                <button
+                  onClick={() => setStatusFilter('Cakanje')}
+                  className={`px-3 py-1 rounded-sm font-medium transition-colors border ${
+                    statusFilter === 'Cakanje'
+                      ? 'bg-amber-600 text-white border-amber-600'
+                      : 'bg-surface text-amber-700 border-border hover:bg-amber-50'
+                  }`}
+                >
+                  V čakanju ({counts.pending})
+                </button>
+
+                <button
+                  onClick={() => setStatusFilter('Nepriporoceno')}
+                  className={`px-3 py-1 rounded-sm font-medium transition-colors border ${
+                    statusFilter === 'Nepriporoceno'
+                      ? 'bg-red-600 text-white border-red-600'
+                      : 'bg-surface text-red-700 border-border hover:bg-red-50'
+                  }`}
+                >
+                  Nepriporočeno ({counts.notRecommended})
+                </button>
+              </div>
+            )}
+
             {isLoading && materials.length === 0 ? (
               <div className="py-12 text-center text-text-muted">Nalaganje gradiv...</div>
             ) : materials.length === 0 ? (
@@ -119,10 +220,14 @@ export const CoursePage = () => {
                   Naloži prvo gradivo
                 </Button>
               </div>
+            ) : filteredMaterials.length === 0 ? (
+              <div className="bg-surface border border-border p-8 text-center text-text-muted">
+                Nobeno gradivo ne ustreza izbranemu filtru statusa.
+              </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {materials.map(material => (
-                  <MaterialCard key={material.id} material={material} />
+                {filteredMaterials.map(material => (
+                  <MaterialCard key={material.id} material={material} isModerator={isModerator} />
                 ))}
               </div>
             )}

@@ -9,8 +9,12 @@ public sealed record MaterialDto(
     string? Description,
     string FileName,
     string Status,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    int? ReviewedById = null,
+    string? ReviewedByName = null
 )
 {
-    public MaterialDto() : this(0, 0, 0, "", "", null, "", "", default) { }
+    public MaterialDto() : this(0, 0, 0, "", "", null, "", "", default, null, null) { }
 }
+
+public sealed record UpdateMaterialStatusRequest(string Status);

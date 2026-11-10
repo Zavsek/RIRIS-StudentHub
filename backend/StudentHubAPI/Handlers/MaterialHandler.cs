@@ -13,16 +13,17 @@ public sealed class MaterialHandler(IDbConnectionFactory connections)
         
         var query = @"
             SELECT g.id as Id, g.predmet_id as CourseId, g.uporabnik_id as AuthorId, COALESCE(u.ime, 'Neznan avtor') as AuthorName, 
-                   g.naslov as Title, g.opis as Description, g.ime_datoteke as FileName, g.status as Status, g.ustvarjeno_dne as CreatedAt
+                   g.naslov as Title, g.opis as Description, g.ime_datoteke as FileName, g.status as Status, g.ustvarjeno_dne as CreatedAt,
+                   g.pregledal_id as ReviewedById, reviewer.ime as ReviewedByName
             FROM gradivo g
             LEFT JOIN uporabnik u ON g.uporabnik_id = u.id
+            LEFT JOIN uporabnik reviewer ON g.pregledal_id = reviewer.id
             JOIN predmet current_p ON g.predmet_id = current_p.id
             JOIN predmet selected_p ON LOWER(current_p.ime) = LOWER(selected_p.ime)
             WHERE selected_p.id = @CourseId
             ORDER BY g.ustvarjeno_dne DESC";
             
         var materials = await connection.QueryAsync<MaterialDto>(new CommandDefinition(query, new { CourseId = courseId }, cancellationToken: cancellationToken));
-        
         return materials.ToList();
     }
 
@@ -48,7 +49,7 @@ public sealed class MaterialHandler(IDbConnectionFactory connections)
             INSERT INTO gradivo (predmet_id, uporabnik_id, naslov, opis, ime_datoteke, supabase_path)
             VALUES (@CourseId, @UserId, @Title, @Description, @FileName, @SupabasePath)
             RETURNING id as Id, predmet_id as PredmetId, uporabnik_id as UporabnikId, naslov as Naslov, opis as Opis, 
-                      ime_datoteke as ImeDatoteke, supabase_path as SupabasePath, status as Status, ustvarjeno_dne as UstvarjenoDne";
+                      ime_datoteke as ImeDatoteke, supabase_path as SupabasePath, status as Status, pregledal_id as PregledalId, ustvarjeno_dne as UstvarjenoDne";
                       
         var gradivo = await connection.QuerySingleAsync<Gradivo>(new CommandDefinition(insertQuery, 
             new { CourseId = courseId, UserId = userId, Title = title, Description = description, FileName = fileName, SupabasePath = supabasePath }, 
@@ -70,8 +71,34 @@ public sealed class MaterialHandler(IDbConnectionFactory connections)
     public async Task<Gradivo?> GetMaterialAsync(int materialId, CancellationToken cancellationToken = default)
     {
         using var connection = await connections.CreateOpenConnectionAsync(cancellationToken);
-        var query = "SELECT id as Id, predmet_id as PredmetId, uporabnik_id as UporabnikId, naslov as Naslov, opis as Opis, ime_datoteke as ImeDatoteke, supabase_path as SupabasePath, status as Status, ustvarjeno_dne as UstvarjenoDne FROM gradivo WHERE id = @MaterialId";
+        var query = @"
+            SELECT id as Id, predmet_id as PredmetId, uporabnik_id as UporabnikId, naslov as Naslov, opis as Opis, 
+                   ime_datoteke as ImeDatoteke, supabase_path as SupabasePath, status as Status, pregledal_id as PregledalId, ustvarjeno_dne as UstvarjenoDne 
+            FROM gradivo WHERE id = @MaterialId";
         return await connection.QuerySingleOrDefaultAsync<Gradivo>(new CommandDefinition(query, new { MaterialId = materialId }, cancellationToken: cancellationToken));
+    }
+
+    public async Task<MaterialDto?> UpdateMaterialStatusAsync(int materialId, string status, int moderatorUserId, CancellationToken cancellationToken = default)
+    {
+        using var connection = await connections.CreateOpenConnectionAsync(cancellationToken);
+        var updateQuery = "UPDATE gradivo SET status = @Status, pregledal_id = @ModeratorUserId WHERE id = @MaterialId";
+        
+        var affected = await connection.ExecuteAsync(new CommandDefinition(updateQuery, 
+            new { MaterialId = materialId, Status = status, ModeratorUserId = moderatorUserId }, 
+            cancellationToken: cancellationToken));
+        
+        if (affected == 0) return null;
+
+        var selectQuery = @"
+            SELECT g.id as Id, g.predmet_id as CourseId, g.uporabnik_id as AuthorId, COALESCE(u.ime, 'Neznan avtor') as AuthorName,
+                   g.naslov as Title, g.opis as Description, g.ime_datoteke as FileName, g.status as Status, g.ustvarjeno_dne as CreatedAt,
+                   g.pregledal_id as ReviewedById, reviewer.ime as ReviewedByName
+            FROM gradivo g
+            LEFT JOIN uporabnik u ON g.uporabnik_id = u.id
+            LEFT JOIN uporabnik reviewer ON g.pregledal_id = reviewer.id
+            WHERE g.id = @MaterialId";
+
+        return await connection.QuerySingleOrDefaultAsync<MaterialDto>(new CommandDefinition(selectQuery, new { MaterialId = materialId }, cancellationToken: cancellationToken));
     }
 
     public async Task DeleteMaterialAsync(int materialId, CancellationToken cancellationToken = default)
