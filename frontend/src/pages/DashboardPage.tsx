@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BookOpen, Search, Settings, Calendar } from 'lucide-react'
+import { BookOpen, Search, Settings, Calendar, Clock } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { useUserProfileStore } from '../stores/userProfileStore'
@@ -46,6 +46,9 @@ export const DashboardPage = () => {
             <Link to="/calendar" className="hidden md:block font-medium text-white/80 hover:text-white transition-colors mr-2">
               Rokovnik
             </Link>
+            <Link to="/schedule" className="hidden md:block font-medium text-white/80 hover:text-white transition-colors mr-2">
+              Urnik
+            </Link>
             <div className="hidden md:block w-px h-6 bg-white/30 mr-2"></div>
 
             <div className="hidden lg:block font-medium mr-4">{user.name}</div>
@@ -71,12 +74,21 @@ export const DashboardPage = () => {
             <h2 className="text-2xl font-bold text-text-main">Moji aktivni predmeti</h2>
           </div>
 
-          <Link to="/calendar">
-            <Button variant="outline" className="flex items-center gap-2 text-sm">
-              <Calendar size={16} />
-              Odpri skupni rokovnik
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link to="/schedule">
+              <Button variant="outline" className="flex items-center gap-2 text-sm">
+                <Clock size={16} />
+                Moj tedenski urnik
+              </Button>
+            </Link>
+
+            <Link to="/calendar">
+              <Button variant="outline" className="flex items-center gap-2 text-sm">
+                <Calendar size={16} />
+                Odpri rokovnik
+              </Button>
+            </Link>
+          </div>
         </div>
         
         {isLoading && !profile ? (

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Calendar, MessageSquare, Plus, FileText, ShieldCheck, Filter, HelpCircle, List } from 'lucide-react'
+import { ArrowLeft, BookOpen, Calendar, MessageSquare, Plus, FileText, ShieldCheck, Filter, HelpCircle, List, Clock, Users } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useMaterialStore } from '../stores/materialStore'
 import { useModerationStore } from '../stores/moderationStore'
@@ -15,10 +15,12 @@ import { QuestionThreadModal } from '../components/qa/QuestionThreadModal'
 import { ObligationCard } from '../components/calendar/ObligationCard'
 import { ObligationModal } from '../components/calendar/ObligationModal'
 import { CalendarGridView } from '../components/calendar/CalendarGridView'
+import { CourseTermsPanel } from '../components/schedule/CourseTermsPanel'
+import { FreeTimeCompareModal } from '../components/schedule/FreeTimeCompareModal'
 import { Button } from '../components/ui/Button'
 import logoUrl from '../assets/Logo.png'
 
-type TabType = 'materials' | 'calendar' | 'qa'
+type TabType = 'materials' | 'calendar' | 'qa' | 'schedule'
 type StatusFilter = 'ALL' | 'Cakanje' | 'Priporoceno' | 'Nepriporoceno'
 
 export const CoursePage = () => {
@@ -48,6 +50,7 @@ export const CoursePage = () => {
   const [initialModalDate, setInitialModalDate] = useState<Date | null>(null)
   const [calendarViewMode, setCalendarViewMode] = useState<'grid' | 'list'>('grid')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false)
 
   useEffect(() => {
     if (!hasHydrated) return
@@ -190,6 +193,18 @@ export const CoursePage = () => {
           >
             <MessageSquare size={18} />
             Q&A Forum ({questions.length})
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('schedule')}
+            className={`flex items-center gap-2 px-6 py-3 font-semibold text-sm transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === 'schedule' 
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-text-muted hover:text-text-main hover:border-border'
+            }`}
+          >
+            <Clock size={18} />
+            Urnik & Predloge
           </button>
         </div>
 
@@ -413,6 +428,41 @@ export const CoursePage = () => {
             )}
           </div>
         )}
+
+        {/* Tab Content: Schedule / Terms */}
+        {activeTab === 'schedule' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-text-main">Predmetni urnik in prosti čas</h3>
+                <p className="text-sm text-text-muted mt-1">
+                  Dodajte privzete termine v svoj osebni urnik ali poiščite skupni prosti čas s sošolci.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCompareModalOpen(true)}
+                  className="flex items-center gap-1.5"
+                >
+                  <Users size={16} />
+                  <span>Primerjaj prosti čas</span>
+                </Button>
+
+                <Link to="/schedule">
+                  <Button type="button" variant="primary" className="flex items-center gap-1.5">
+                    <Clock size={16} />
+                    <span>Moj osebni urnik</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            <CourseTermsPanel courseId={id} isModerator={isModerator} />
+          </div>
+        )}
       </main>
 
       <MaterialUploadModal 
@@ -443,6 +493,12 @@ export const CoursePage = () => {
           setEditingObligation(null)
           setInitialModalDate(null)
         }}
+      />
+
+      <FreeTimeCompareModal
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        initialCourseId={id}
       />
     </div>
   )

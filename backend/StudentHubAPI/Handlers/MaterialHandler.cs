@@ -7,24 +7,55 @@ namespace StudentHubAPI.Handlers;
 
 public sealed class MaterialHandler(IDbConnectionFactory connections)
 {
-    public async Task<List<MaterialDto>> GetMaterialsForCourseAsync(int courseId, CancellationToken cancellationToken = default)
+    public async Task<List<MaterialDto>> GetMaterialsForCourseAsync(int courseId, int? currentUserId = null, CancellationToken cancellationToken = default)
     {
         using var connection = await connections.CreateOpenConnectionAsync(cancellationToken);
         
         var query = @"
             SELECT g.id as Id, g.predmet_id as CourseId, g.uporabnik_id as AuthorId, COALESCE(u.ime, 'Neznan avtor') as AuthorName, 
                    g.naslov as Title, g.opis as Description, g.ime_datoteke as FileName, g.status as Status, g.ustvarjeno_dne as CreatedAt,
-                   g.pregledal_id as ReviewedById, reviewer.ime as ReviewedByName
+                   g.pregledal_id as ReviewedById, reviewer.ime as ReviewedByName,
+                   ROUND(AVG(og.ocena)::numeric, 1)::float8 as AverageRating,
+                   COUNT(og.id)::int as RatingCount,
+                   MAX(CASE WHEN og.uporabnik_id = @UserId THEN og.ocena ELSE NULL END) as UserRating
             FROM gradivo g
             LEFT JOIN uporabnik u ON g.uporabnik_id = u.id
             LEFT JOIN uporabnik reviewer ON g.pregledal_id = reviewer.id
+            LEFT JOIN ocena_gradiva og ON og.gradivo_id = g.id
             JOIN predmet current_p ON g.predmet_id = current_p.id
             JOIN predmet selected_p ON LOWER(current_p.ime) = LOWER(selected_p.ime)
             WHERE selected_p.id = @CourseId
+            GROUP BY g.id, g.predmet_id, g.uporabnik_id, u.ime, g.naslov, g.opis, g.ime_datoteke, g.status, g.ustvarjeno_dne, g.pregledal_id, reviewer.ime
             ORDER BY g.ustvarjeno_dne DESC";
             
-        var materials = await connection.QueryAsync<MaterialDto>(new CommandDefinition(query, new { CourseId = courseId }, cancellationToken: cancellationToken));
+        var materials = await connection.QueryAsync<MaterialDto>(new CommandDefinition(query, new { CourseId = courseId, UserId = currentUserId }, cancellationToken: cancellationToken));
         return materials.ToList();
+    }
+
+    public async Task<MaterialRatingSummaryDto> RateMaterialAsync(int materialId, int userId, int rating, CancellationToken cancellationToken = default)
+    {
+        using var connection = await connections.CreateOpenConnectionAsync(cancellationToken);
+
+        var upsertQuery = @"
+            INSERT INTO ocena_gradiva (gradivo_id, uporabnik_id, ocena)
+            VALUES (@MaterialId, @UserId, @Rating)
+            ON CONFLICT (gradivo_id, uporabnik_id)
+            DO UPDATE SET ocena = EXCLUDED.ocena, ustvarjeno_dne = NOW()";
+
+        await connection.ExecuteAsync(new CommandDefinition(upsertQuery,
+            new { MaterialId = materialId, UserId = userId, Rating = rating },
+            cancellationToken: cancellationToken));
+
+        var summaryQuery = @"
+            SELECT @MaterialId as MaterialId,
+                   ROUND(AVG(ocena)::numeric, 1)::float8 as AverageRating,
+                   COUNT(id)::int as RatingCount,
+                   MAX(CASE WHEN uporabnik_id = @UserId THEN ocena ELSE NULL END) as UserRating
+            FROM ocena_gradiva
+            WHERE gradivo_id = @MaterialId";
+
+        return await connection.QuerySingleAsync<MaterialRatingSummaryDto>(
+            new CommandDefinition(summaryQuery, new { MaterialId = materialId, UserId = userId }, cancellationToken: cancellationToken));
     }
 
     public async Task<bool> BelongsToCourseSubjectAsync(int materialPredmetId, int targetCourseId, CancellationToken cancellationToken = default)

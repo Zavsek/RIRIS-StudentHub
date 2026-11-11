@@ -73,6 +73,12 @@ export const CalendarPage = () => {
             <Link to="/dashboard" className="hidden md:block font-medium text-white/80 hover:text-white transition-colors mr-2">
               Moji predmeti
             </Link>
+            <Link to="/calendar" className="hidden md:block font-medium text-white underline underline-offset-4 decoration-secondary mr-2">
+              Rokovnik
+            </Link>
+            <Link to="/schedule" className="hidden md:block font-medium text-white/80 hover:text-white transition-colors mr-2">
+              Urnik
+            </Link>
             <Link to="/catalog" className="hidden md:block font-medium text-white/80 hover:text-white transition-colors mr-2">
               Katalog
             </Link>
