@@ -1,9 +1,12 @@
 using System.Net.Http.Headers;
+using Dapper;
 using StudentHubAPI.Data;
 using StudentHubAPI.Endpoints;
 using StudentHubAPI.Handlers;
 using StudentHubAPI.Hubs;
 using StudentHubAPI.Services;
+
+SqlMapper.AddTypeHandler(new TimeOnlyHandler());
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +22,7 @@ builder.Services.AddScoped<MaterialHandler>();
 builder.Services.AddScoped<ModerationHandler>();
 builder.Services.AddScoped<QaHandler>();
 builder.Services.AddScoped<CalendarHandler>();
+builder.Services.AddScoped<ScheduleHandler>();
 builder.Services.AddSignalR();
 
 var supabaseOptions = builder.Configuration.GetSection(SupabaseOptions.SectionName).Get<SupabaseOptions>() ?? new SupabaseOptions();
@@ -41,6 +45,7 @@ app.MapMaterialEndpoints();
 app.MapModerationEndpoints();
 app.MapQaEndpoints();
 app.MapCalendarEndpoints();
+app.MapScheduleEndpoints();
 app.MapHub<QaHub>("/hubs/qa");
 app.MapGet("/", () => "StudentHub API");
 
