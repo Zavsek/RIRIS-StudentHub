@@ -22,6 +22,7 @@ import logoUrl from '../assets/Logo.png'
 
 type TabType = 'materials' | 'calendar' | 'qa' | 'schedule'
 type StatusFilter = 'ALL' | 'Cakanje' | 'Priporoceno' | 'Nepriporoceno'
+type MaterialSortOption = 'NEWEST' | 'MOST_RATED' | 'HIGHEST_RATED'
 
 export const CoursePage = () => {
   const { courseId } = useParams<{ courseId: string }>()
@@ -50,6 +51,7 @@ export const CoursePage = () => {
   const [initialModalDate, setInitialModalDate] = useState<Date | null>(null)
   const [calendarViewMode, setCalendarViewMode] = useState<'grid' | 'list'>('grid')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
+  const [materialSort, setMaterialSort] = useState<MaterialSortOption>('NEWEST')
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false)
 
   useEffect(() => {
@@ -104,9 +106,20 @@ export const CoursePage = () => {
   }
 
   const filteredMaterials = useMemo(() => {
-    if (statusFilter === 'ALL') return materials
-    return materials.filter(m => m.status === statusFilter)
-  }, [materials, statusFilter])
+    let result = statusFilter === 'ALL'
+      ? [...materials]
+      : materials.filter(m => m.status === statusFilter)
+
+    if (materialSort === 'MOST_RATED') {
+      result.sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0))
+    } else if (materialSort === 'HIGHEST_RATED') {
+      result.sort((a, b) => (b.averageRating ?? 0) - (a.averageRating ?? 0))
+    } else {
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    }
+
+    return result
+  }, [materials, statusFilter, materialSort])
 
   const counts = useMemo(() => {
     return {
@@ -273,6 +286,20 @@ export const CoursePage = () => {
                 >
                   Nepriporočeno ({counts.notRecommended})
                 </button>
+
+                {/* Razvrščanje gradiv (US-12) */}
+                <div className="flex items-center gap-1.5 ml-auto pl-2 shrink-0">
+                  <span className="text-text-muted font-medium">Razvrsti:</span>
+                  <select
+                    value={materialSort}
+                    onChange={e => setMaterialSort(e.target.value as MaterialSortOption)}
+                    className="bg-surface border border-border text-xs px-2.5 py-1 rounded-sm text-text-main focus:outline-none focus:border-primary font-medium cursor-pointer"
+                  >
+                    <option value="NEWEST">Najnovejše</option>
+                    <option value="MOST_RATED">Največkrat ocenjeno</option>
+                    <option value="HIGHEST_RATED">Najvišja ocena</option>
+                  </select>
+                </div>
               </div>
             )}
 

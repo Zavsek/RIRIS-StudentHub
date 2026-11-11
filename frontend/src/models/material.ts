@@ -10,4 +10,7 @@ export interface Material {
   createdAt: string
   reviewedById?: number
   reviewedByName?: string
+  averageRating?: number | null
+  ratingCount?: number
+  userRating?: number | null
 }
