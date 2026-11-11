@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Mvc;
 using StudentHubAPI.Handlers;
+using StudentHubAPI.Models.Dtos;
 using StudentHubAPI.Services;
 
 namespace StudentHubAPI.Endpoints;
@@ -14,10 +15,32 @@ public static class MaterialEndpoints
     {
         var group = routes.MapGroup("/api/courses/{courseId:int}/materials").RequireAuthorization();
 
-        group.MapGet("/", async (int courseId, MaterialHandler handler, CancellationToken ct) =>
+        group.MapGet("/", async (int courseId, ClaimsPrincipal user, MaterialHandler handler, CancellationToken ct) =>
         {
-            var materials = await handler.GetMaterialsForCourseAsync(courseId, ct);
+            var userId = AuthUserId.TryRead(user, out var uid) ? (int?)uid : null;
+            var materials = await handler.GetMaterialsForCourseAsync(courseId, userId, ct);
             return Results.Ok(materials);
+        });
+
+        group.MapPost("/{materialId:int}/rate", async (
+            int courseId,
+            int materialId,
+            RateMaterialRequest req,
+            ClaimsPrincipal user,
+            MaterialHandler dbHandler,
+            CancellationToken ct) =>
+        {
+            if (!AuthUserId.TryRead(user, out var userId))
+                return Results.Unauthorized();
+
+            if (req.Rating is < 1 or > 5)
+                return Results.BadRequest(new { message = "Ocena mora biti med 1 in 5 zvezdicami." });
+
+            var material = await dbHandler.GetMaterialAsync(materialId, ct);
+            if (material == null) return Results.NotFound(new { message = "Gradivo ne obstaja." });
+
+            var summary = await dbHandler.RateMaterialAsync(materialId, userId, req.Rating, ct);
+            return Results.Ok(summary);
         });
 
         group.MapPost("/", async (
