@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { FileDown, Trash2, FileText, Clock, CheckCircle2, XCircle, RotateCcw } from 'lucide-react'
 import { Button } from '../ui/Button'
+import { StarRating } from './StarRating'
 import type { Material } from '../../models/material'
 import type { MaterialStatus } from '../../models/moderation'
 import { useAuthStore } from '../../stores/authStore'
@@ -16,6 +17,7 @@ export const MaterialCard = ({ material, isModerator = false }: MaterialCardProp
   const user = useAuthStore(state => state.user)
   const token = useAuthStore(state => state.tokens?.accessToken)
   const deleteMaterial = useMaterialStore(state => state.deleteMaterial)
+  const rateMaterial = useMaterialStore(state => state.rateMaterial)
   const setMaterialStatus = useModerationStore(state => state.setMaterialStatus)
   
   const [isDeleting, setIsDeleting] = useState(false)
@@ -23,6 +25,14 @@ export const MaterialCard = ({ material, isModerator = false }: MaterialCardProp
 
   const isAuthor = user?.id === material.authorId
   const canDelete = isAuthor || isModerator
+
+  const handleRate = async (rating: number) => {
+    try {
+      await rateMaterial(material.courseId, material.id, rating)
+    } catch (e: any) {
+      alert(e.message || 'Napaka pri ocenjevanju.')
+    }
+  }
 
   const handleDownload = async () => {
     try {
@@ -97,6 +107,16 @@ export const MaterialCard = ({ material, isModerator = false }: MaterialCardProp
                 {material.description}
               </p>
             )}
+
+            {/* Ocenjevanje z zvezdicami (US-12) */}
+            <div className="mt-2 mb-2">
+              <StarRating
+                averageRating={material.averageRating}
+                ratingCount={material.ratingCount ?? 0}
+                userRating={material.userRating}
+                onRate={handleRate}
+              />
+            </div>
 
             <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted mt-2">
               <span className="font-medium text-text-main">

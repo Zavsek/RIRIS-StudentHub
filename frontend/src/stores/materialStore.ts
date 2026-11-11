@@ -10,6 +10,7 @@ interface MaterialState {
   fetchMaterials: (courseId: number) => Promise<void>
   uploadMaterial: (courseId: number, title: string, description: string, file: File) => Promise<void>
   deleteMaterial: (courseId: number, materialId: number) => Promise<void>
+  rateMaterial: (courseId: number, materialId: number, rating: number) => Promise<void>
   updateMaterialInStore: (material: Material) => void
 }
 
@@ -47,7 +48,7 @@ export const useMaterialStore = create<MaterialState>((set) => ({
 
       const res = await fetch(`/api/courses/${courseId}/materials`, {
         method: 'POST',
-        headers: getAuthHeader(), // FormData automatically sets correct Content-Type with boundary
+        headers: getAuthHeader(),
         body: formData
       })
       
@@ -79,6 +80,31 @@ export const useMaterialStore = create<MaterialState>((set) => ({
       }))
     } catch (e: any) {
       set({ error: e.message, isLoading: false })
+      throw e
+    }
+  },
+
+  rateMaterial: async (courseId: number, materialId: number, rating: number) => {
+    try {
+      const res = await fetch(`/api/courses/${courseId}/materials/${materialId}/rate`, {
+        method: 'POST',
+        headers: { ...getAuthHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating })
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Napaka pri ocenjevanju gradiva' }))
+        throw new Error(err.message || 'Napaka pri ocenjevanju gradiva')
+      }
+      const summary = await res.json() as { averageRating: number | null, ratingCount: number, userRating: number | null }
+      set(state => ({
+        materials: state.materials.map(m =>
+          m.id === materialId
+            ? { ...m, averageRating: summary.averageRating, ratingCount: summary.ratingCount, userRating: summary.userRating }
+            : m
+        )
+      }))
+    } catch (e: any) {
+      set({ error: e.message })
       throw e
     }
   },
